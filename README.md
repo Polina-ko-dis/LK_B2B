@@ -18,4 +18,17 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 4175
 ```
 
+## Обновление публикации
+
+Прототип: https://polina-ko-dis.github.io/LK_B2B/
+
+```bash
+VITE_BASE_PATH=/LK_B2B/ npx vite build
+rm -rf docs
+cp -R dist/client docs
+touch docs/.nojekyll
+```
+
+Закоммитьте исходники и `docs`, затем отправьте изменения в ветку `main`. GitHub Pages публикует каталог `docs`; доступ к частному реестру на стороне GitHub не требуется.
+
 Макеты: Figma «Личный кабинет гостя В2В», страница «Настройки», секция «Реактор».
