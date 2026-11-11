@@ -1,0 +1,92 @@
+html,body,#root{min-height:100%;margin:0}*{box-sizing:border-box}
+.shell{display:flex;min-height:100vh;background:rgb(var(--REACTOR-color-background))}
+.workspace{flex:1;min-width:0;display:flex;flex-direction:column}
+.inline{display:flex;align-items:center;gap:20px}
+
+/* Боковое меню — из конструктора витрины */
+.navigation{width:288px;flex-shrink:0;background:rgb(var(--REACTOR-color-scaffold-level-1-background))}
+.provider{display:flex;align-items:center;gap:12px;height:48px;padding:8px 16px;background:rgb(var(--REACTOR-color-scaffold-primary))}
+.provider>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.provider-logo{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#fff;color:rgb(var(--REACTOR-color-scaffold-primary));font-weight:700;font-size:14px}
+.navigation-row{display:flex;gap:16px;align-items:center;height:48px;padding:12px 16px;border-bottom:1px solid rgb(var(--REACTOR-color-scaffold-separator))}
+.navigation-arrow{margin-left:auto;display:inline-flex}
+.navigation-child{display:flex;align-items:center;gap:8px;width:100%;height:40px;padding:10px 16px 10px 48px;border:0;border-bottom:1px solid rgb(var(--REACTOR-color-scaffold-separator));background:rgb(var(--REACTOR-color-scaffold-level-2-background));text-align:left;cursor:pointer;font:inherit}
+.navigation-child.level-2{padding-left:56px;background:rgb(var(--REACTOR-color-scaffold-level-3-background,var(--REACTOR-color-scaffold-level-2-background)))}
+.navigation-child.active{background:rgb(var(--REACTOR-color-background))}
+.navigation-child:focus-visible{outline:2px solid rgb(var(--REACTOR-color-accent));outline-offset:-2px}
+.navigation-badge{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgb(var(--REACTOR-color-danger));color:#fff;font-size:11px;font-weight:600}
+
+/* Шапка и подвал */
+.topbar{display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 24px 0 32px;background:rgb(var(--REACTOR-color-background-secondary)) url('/assets/ribbon.png') center/cover no-repeat;border-bottom:1px solid rgb(var(--REACTOR-color-border))}
+.footer{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding:16px 32px;background:rgb(var(--REACTOR-color-background-secondary));border-top:1px solid rgb(var(--REACTOR-color-border))}
+
+/* Страница */
+.page{display:flex;flex-direction:column;gap:24px;padding:32px 32px 48px}
+.intro{display:flex;flex-direction:column;gap:16px;padding:16px 24px}
+.description-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.inline-text{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.tile-body{display:flex;flex-direction:column;gap:24px}
+.setting-row{display:grid;grid-template-columns:216px minmax(0,1fr);gap:24px;align-items:center}
+.settings-list{gap:20px}
+.setting-control{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-width:0}
+.link-field{max-width:480px}.admin-field{max-width:240px}
+
+/* Сайдбар «Описание настройки» */
+.description-body{display:flex;flex-direction:column;gap:16px}
+.description-image{display:block;width:100%;height:auto;margin-bottom:8px}
+
+@media(max-width:900px){.navigation{width:240px}}
+@media(max-width:600px){.navigation{display:none}.page{padding:16px}.setting-row{grid-template-columns:1fr;gap:8px}.topbar{padding:0 16px}}
+
+#reactor-app-portal [class*="_scope_"]:has(> [class*="_target_"] > *){z-index:1500}
+.support-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px 0 8px;border-radius:14px;background:rgb(var(--REACTOR-color-danger))}
+.page>*{flex:none!important}
+.description-list{list-style:disc}.description-list li{display:list-item}
+.setting-control>*{flex:0 1 auto}
+.provider .provider-logo+div *{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setting-control>*{flex:0 1 auto!important}
+.description-list{list-style:none;padding-left:4px}.description-list li{display:flex;gap:8px}.description-list li::before{content:"•";color:rgb(var(--REACTOR-color-foreground))}
+.inline-text{display:block}.inline-text>span{display:inline}.inline-text>a{display:inline-flex;vertical-align:middle;margin-left:4px}
+.intro{padding:40px 56px 16px}.intro>:first-child{text-align:center;margin-bottom:8px}
+.setting-control{flex-wrap:nowrap}.setting-control>:first-child{flex:none!important;min-width:0;max-width:100%}
+html,body{overflow-y:auto}#root{overflow:visible}
+.setting-control>:first-child>*{flex:0 1 auto!important}
+.navigation{position:sticky;top:0;height:100vh;overflow-y:auto;align-self:flex-start}
+/* Сверка с тестовой средой qatl.ru */
+.intro{padding:16px}.intro>:first-child{text-align:left;margin-bottom:0}
+.link-field,.admin-field{max-width:500px}
+.inline.user{gap:8px}
+.intro>:first-child{text-align:center}
+.intro-action{display:flex;margin-top:-8px}
+.setting-control{flex-wrap:wrap}
+.setting-control>a{flex:none!important}
+/* Admin: тип ЛК и зависимый блок */
+.setting-row.align-top{align-items:start}.setting-row.align-top>:first-child{padding-top:8px}
+.admin-control{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:532px}
+.admin-control .admin-field{max-width:none}
+.dependent-block{display:flex;flex-direction:column;gap:16px;padding:16px;border-radius:8px;background:rgb(var(--REACTOR-color-background-dependent))}
+.dependent-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+/* Зависимый блок на всю ширину; колонка подписей уже на величину отступа, чтобы поля стояли под селектом */
+.dependent-block{gap:20px}.dependent-block>.setting-row{grid-template-columns:200px minmax(0,1fr)}
+.dependent-block .admin-field{max-width:500px}
+@media(max-width:600px){.dependent-block>.setting-row{grid-template-columns:1fr}}
+.setting-row.checkbox-row>:first-child{padding-top:0}
+/* Панель разработчика (не часть интерфейса), по образцу Экспресса */
+.devp{position:fixed;z-index:2000;left:50%;transform:translateX(-50%);bottom:16px;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:8px;border-radius:999px;background:rgb(var(--REACTOR-color-background-secondary)/.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 6px 24px rgb(0 0 0/.16),0 0 0 1px rgb(var(--REACTOR-color-border));font:600 15px/1 'Open Sans',system-ui,sans-serif;color:rgb(var(--REACTOR-color-foreground))}
+.devp-pill{position:relative;flex:none;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 18px;border:1px solid rgb(var(--REACTOR-color-border));border-radius:999px;background:rgb(var(--REACTOR-color-background-secondary));cursor:pointer}
+.devp-pill:focus-within{border-color:rgb(var(--REACTOR-color-accent));box-shadow:0 0 0 1px rgb(var(--REACTOR-color-accent))}
+.devp-k{color:rgb(var(--REACTOR-color-neutral));font-weight:500}
+.devp-pill select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:0 22px 0 0;margin-right:-22px;cursor:pointer;outline:none}
+.devp-chev{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.workspace{padding-bottom:76px}
+/* Сетевой отель: дополнительный ЛК */
+.extra-account{display:flex;flex-direction:column;gap:16px}
+.extra-account-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.extra-account>.setting-row{padding-left:16px;grid-template-columns:200px minmax(0,1fr)}
+.extra-account-head{justify-content:flex-start;gap:8px}
+.tile-body>.dependent-block{margin-top:-8px}
+/* Ссылки на ЛК на странице гостя: поле read only + кнопка копирования справа (для сетевого) */
+.account-link{display:flex;align-items:flex-start;gap:16px;min-width:0}
+.account-link>.link-field{flex:1 1 auto;width:100%}
+.account-link>button,.account-link>a{flex:none}
+.link-field>:first-child{width:100%!important;max-width:none!important;min-width:0;box-sizing:border-box;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}

@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "lk-b2b", "url": "http://127.0.0.1:4175", "port": 4175 }
+  ]
+}
