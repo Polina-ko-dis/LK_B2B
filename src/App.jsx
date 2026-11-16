@@ -124,10 +124,13 @@ function SitesField({sites,onChange,errors=[],required}){
 const lkTypes=[{value:'tl',text:'Личный кабинет TL'},{value:'external',text:'Внешний личный кабинет'}];
 const initialAdmin={type:'tl',externalUrl:'',fbAuth:true,extra:false,extraUrl:'',sites:[''],extraSites:['']};
 
-function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,siteErrors,setSiteErrors}){
+function AdminPage({admin,savedAdmin,setAdmin,error,setError,extraError,setExtraError,siteErrors,setSiteErrors}){
  const external=admin.type==='external';
  const extraExternal=!external;
  const set=patch=>setAdmin(a=>({...a,...patch}));
+ // ЛК TL на месте сохранённого внешнего: на тех же сайтах вход был скрыт — остаётся скрытым, пока саппорт явно не включит.
+ const replacedExternal=savedAdmin.type==='external'&&admin.type==='tl';
+ const changeType=type=>{set({type,fbAuth:type==='tl'?(savedAdmin.type==='external'?false:savedAdmin.fbAuth):admin.fbAuth});setError('');setExtraError('')};
  const clearSiteErrors=()=>setSiteErrors({main:[],extra:[]});
  const sitesRow=(kind,key)=><div className="setting-row align-top">
   <Text text="Используется на сайтах"/>
@@ -139,9 +142,12 @@ function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,siteE
    <div className="tile-body">
     <InfoAlert text="Если изменилась ссылка на личный кабинет гостя, уведомите средство размещения о необходимости обновить QR-код."/>
     {admin.extra&&<Text text="Основной личный кабинет" typography="subtitle"/>}
-    <div className="setting-row">
+    <div className="setting-row align-top">
      <Text text="Тип личного кабинета"/>
-     <div className="admin-field"><Select value={admin.type} onChange={type=>{set({type});setError('');setExtraError('')}} options={lkTypes} size="stretch"/></div>
+     <div className="dependent-field admin-field">
+      <Select value={admin.type} onChange={changeType} options={lkTypes} size="stretch" disabled={admin.extra}/>
+      {admin.extra&&<Text text="Чтобы сменить тип, удалите дополнительный личный кабинет" typography="caption" color="neutral"/>}
+     </div>
     </div>
     <div className="dependent-block">
      {external&&<WarningAlert text={fbAuthHiddenAlert}/>}
@@ -156,6 +162,7 @@ function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,siteE
       </div>
      </div>
      {sitesRow('main','sites')}
+     {replacedExternal&&<InfoAlert text="Раньше здесь был внешний личный кабинет, поэтому вход в модуле бронирования скрыт. Включите его, если гостям нужно видеть вход."/>}
      {!external&&<FbAuthRow admin={admin} onChange={fbAuth=>set({fbAuth})}/>}
     </div>
     {admin.extra
@@ -221,7 +228,7 @@ function Prototype(){
      <Button type="primary" text="Сохранить" onClick={save}/>
      <div className="inline"><Icon name="wallet" color="accent"/><Icon name="settings" color="accent"/><Icon name="notification" color="accent"/><Icon name="help" color="accent"/><span className="inline user"><Icon name="account" color="accent"/><Text text="polina.kozlova" color="accent"/></span></div>
     </div>
-    {route==='admin'?<AdminPage admin={admin} setAdmin={setAdmin} error={adminError} setError={setAdminError} extraError={extraError} setExtraError={setExtraError} siteErrors={siteErrors} setSiteErrors={setSiteErrors}/>:<AccountPage settings={settings} setSettings={setSettings} onDescription={setDescription} onNotify={notify} admin={savedAdmin}/>}
+    {route==='admin'?<AdminPage savedAdmin={savedAdmin} admin={admin} setAdmin={setAdmin} error={adminError} setError={setAdminError} extraError={extraError} setExtraError={setExtraError} siteErrors={siteErrors} setSiteErrors={setSiteErrors}/>:<AccountPage settings={settings} setSettings={setSettings} onDescription={setDescription} onNotify={notify} admin={savedAdmin}/>}
     <footer className="footer"><Text typography="caption" color="neutral" text="© ООО «ТРЭВЕЛ ЛАЙН СИСТЕМС», 2021 – 2026"/><Text typography="caption" color="neutral" text="TravelLine: Platform — автоматизация процессов для гостиничного бизнеса"/></footer>
    </div>
   </div>
