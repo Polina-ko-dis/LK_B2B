@@ -1,7 +1,6 @@
 import React,{useEffect,useState} from 'react';
-import {ReactorTheme,Text,Label,Select,Button,IconButton,Icon,Field,ReadOnlyField,Checkbox,Tile,PageTop,InfoAlert,SidebarWindow,SnackbarWindow} from '@reactor/reactor';
+import {ReactorTheme,Text,Label,Select,Button,IconButton,Icon,Field,ReadOnlyField,Checkbox,Tile,PageTop,InfoAlert,WarningAlert,SidebarWindow,SnackbarWindow} from '@reactor/reactor';
 import Navigation from './Navigation';
-import DevPanel from './DevPanel';
 import {DescriptionBody} from './descriptions';
 
 const accountUrl='https://guest.qatl.ru/guest-account/16229/auth';
@@ -18,15 +17,35 @@ const initialSettings={hotbot:true,deleteProfile:false,merge:true,payment:true};
 function DescriptionLink({onOpen}){return <Button type="link" icon="help" text="Описание настройки" onClick={onOpen}/>}
 
 // Ссылки на ЛК берутся из сохранённых настроек на странице «Настройки (admin)».
-function accountLinks(admin,chain){
- const external=admin.type==='external';
- const links=[{key:'main',label:chain?'Основной личный кабинет':'Ссылка на личный кабинет гостя',url:external?admin.externalUrl.trim():accountUrl,hint:external?'Тип: внешний личный кабинет':'Тип: личный кабинет TL'}];
- if(chain&&!external&&admin.extra&&admin.extraUrl.trim())links.push({key:'extra',label:'Дополнительный личный кабинет',url:admin.extraUrl.trim(),hint:'Тип: внешний личный кабинет'});
+// Максимум один кабинет каждого типа: дополнительный ЛК всегда другого типа, чем основной.
+const otherType=type=>type==='external'?'tl':'external';
+const typeHint=type=>type==='external'?'Тип: внешний личный кабинет':'Тип: личный кабинет TL';
+// Вход в модуле бронирования управляется только для ЛК TL; если ЛК TL нет (только внешний) — вход всегда скрыт.
+const hasTl=admin=>admin.type==='tl'||admin.extra;
+const fbAuthOn=admin=>hasTl(admin)&&admin.fbAuth;
+const fbAuthLabel='Показывать вход в личный кабинет TL';
+const fbAuthHiddenText='Для внешнего личного кабинета вход всегда скрыт';
+
+function FbAuthRow({admin,onChange}){
+ return <div className="setting-row align-top checkbox-row">
+  <Text text="Вход в модуле бронирования TravelLine"/>
+  <div className="dependent-field"><Checkbox value={admin.fbAuth} onChange={onChange} label={fbAuthLabel}/></div>
+ </div>;
+}
+const fbAuthHiddenAlert='Для внешнего личного кабинета вход в модуле бронирования TravelLine всегда скрыт.';
+
+function accountLinks(admin){
+ const main={type:admin.type,url:admin.type==='external'?admin.externalUrl.trim():accountUrl};
+ const extraType=otherType(admin.type);
+ const extra=admin.extra?{type:extraType,url:extraType==='external'?admin.extraUrl.trim():accountUrl}:null;
+ const hasExtra=Boolean(extra&&extra.url);
+ const links=[{key:'main',label:hasExtra?'Основной личный кабинет':'Ссылка на личный кабинет гостя',url:main.url,hint:typeHint(main.type)}];
+ if(hasExtra)links.push({key:'extra',label:'Дополнительный личный кабинет',url:extra.url,hint:typeHint(extra.type)});
  return links;
 }
 
-function AccountPage({settings,setSettings,onDescription,onNotify,admin,chain}){
- const links=accountLinks(admin,chain);
+function AccountPage({settings,setSettings,onDescription,onNotify,admin}){
+ const links=accountLinks(admin);
  const copy=async url=>{try{await navigator.clipboard.writeText(url);onNotify('Ссылка скопирована')}catch{onNotify('Не удалось скопировать ссылку','danger')}};
  const many=links.length>1;
  return <main className="page">
@@ -66,36 +85,77 @@ function AccountPage({settings,setSettings,onDescription,onNotify,admin,chain}){
       {r.description&&<DescriptionLink onOpen={()=>onDescription(r.description)}/>}
      </div>
     </div>)}
-    {admin.type==='external'&&<div className="setting-row">
+    <div className="setting-row align-top checkbox-row">
      <Text text="Вход в модуле бронирования TravelLine"/>
-     <div className="setting-control">
-      <Checkbox value={admin.fbAuth} disabled disabledHint="Настраивается администратором" label={{text:'Показывать вход в личный кабинет TL',color:'foreground'}}/>
+     <div className="dependent-field">
+      <Checkbox value={fbAuthOn(admin)} disabled disabledHint={hasTl(admin)?'Настраивается администратором':fbAuthHiddenText} label={{text:fbAuthLabel,color:'foreground'}}/>
+      {!hasTl(admin)&&<Text text={fbAuthHiddenText} typography="caption" color="neutral"/>}
      </div>
-    </div>}
+    </div>
    </div>
   </Tile></div>
  </main>;
 }
 
-const lkTypes=[{value:'tl',text:'Личный кабинет TL'},{value:'external',text:'Внешний личный кабинет'}];
-const initialAdmin={type:'tl',externalUrl:'',fbAuth:false,extra:false,extraUrl:''};
+// Сайты, на которых работает ЛК: по адресу сайта GuestProfile выбирает, какой ЛК и какую настройку входа применить к ФБ.
+// Необязательны только для единственного ЛК TL; один сайт нельзя назначить двум кабинетам.
+const normSite=v=>v.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/+$/,'');
+const sitesRequired=(admin,kind)=>admin.extra||(kind==='main'&&admin.type==='external');
+function validateSites(admin){
+ const lists=admin.extra?{main:admin.sites,extra:admin.extraSites}:{main:admin.sites};
+ const errors={main:[],extra:[]};
+ for(const kind of Object.keys(lists)){
+  const list=lists[kind],other=kind==='main'?lists.extra:lists.main,otherSet=new Set((other||[]).map(normSite).filter(Boolean));
+  list.forEach((v,i)=>{
+   const n=normSite(v);
+   if(!n){if(i>0)errors[kind][i]='Укажите сайт или удалите поле';else if(sitesRequired(admin,kind))errors[kind][i]='Укажите сайт';return}
+   if(list.slice(0,i).some(x=>normSite(x)===n))errors[kind][i]='Этот сайт уже указан';
+   else if(otherSet.has(n))errors[kind][i]='Сайт уже указан у другого личного кабинета';
+  });
+ }
+ return errors;
+}
 
-function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,chain}){
+function SitesField({sites,onChange,errors=[],required}){
+ return <div className="dependent-field sites-field">
+  {sites.map((site,i)=><div className="site-item" key={i}>
+   <div className="site-row">
+    <Field value={site} onChange={v=>onChange(sites.map((x,j)=>j===i?v:x))} placeholder="https://" size="stretch" state={errors[i]?'danger':undefined}/>
+    {i>0&&<Button icon="delete" hint="Удалить сайт" onClick={()=>onChange(sites.filter((_,j)=>j!==i))}/>}
+   </div>
+   {errors[i]&&<div role="alert"><Text text={errors[i]} typography="caption" color="danger"/></div>}
+  </div>)}
+  {!required&&<Text text="Необязательно" typography="caption" color="neutral"/>}
+  <div><Button type="link" icon="add" text="Добавить сайт" onClick={()=>onChange([...sites,''])}/></div>
+ </div>;
+}
+
+const lkTypes=[{value:'tl',text:'Личный кабинет TL'},{value:'external',text:'Внешний личный кабинет'}];
+const initialAdmin={type:'tl',externalUrl:'',fbAuth:true,extra:false,extraUrl:'',sites:[''],extraSites:['']};
+
+function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,siteErrors,setSiteErrors}){
  const external=admin.type==='external';
+ const extraExternal=!external;
  const set=patch=>setAdmin(a=>({...a,...patch}));
+ const clearSiteErrors=()=>setSiteErrors({main:[],extra:[]});
+ const sitesRow=(kind,key)=><div className="setting-row align-top">
+  <Text text="Используется на сайтах"/>
+  <SitesField sites={admin[key]} required={sitesRequired(admin,kind)} errors={siteErrors[kind]} onChange={v=>{set({[key]:v});clearSiteErrors()}}/>
+ </div>;
  return <main className="page">
   <PageTop title="Настройки"/>
   <div className="tile-wrap"><Tile header="Отображение личного кабинета">
    <div className="tile-body">
     <InfoAlert text="Если изменилась ссылка на личный кабинет гостя, уведомите средство размещения о необходимости обновить QR-код."/>
-    {chain&&<Text text="Основной личный кабинет" typography="subtitle"/>}
+    {admin.extra&&<Text text="Основной личный кабинет" typography="subtitle"/>}
     <div className="setting-row">
      <Text text="Тип личного кабинета"/>
-     <div className="admin-field"><Select value={admin.type} onChange={type=>{set({type});setError('')}} options={lkTypes} size="stretch"/></div>
+     <div className="admin-field"><Select value={admin.type} onChange={type=>{set({type});setError('');setExtraError('')}} options={lkTypes} size="stretch"/></div>
     </div>
     <div className="dependent-block">
+     {external&&<WarningAlert text={fbAuthHiddenAlert}/>}
      <div className="setting-row align-top">
-      <Text text="Ссылка"/>
+      <Text text="Ссылка на личный кабинет"/>
       <div className="dependent-field admin-field">
        {external
         ?<Field value={admin.externalUrl} onChange={externalUrl=>{set({externalUrl});setError('')}} placeholder="https://" size="stretch" state={error?'danger':undefined}/>
@@ -104,25 +164,34 @@ function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,chain
        {!external&&<Text text="Формируется автоматически" typography="caption" color="neutral"/>}
       </div>
      </div>
-     {external&&<div className="setting-row align-top checkbox-row">
-      <Text text="Вход в модуле бронирования TravelLine"/>
-      <div className="dependent-field">
-       <Checkbox value={admin.fbAuth} onChange={fbAuth=>set({fbAuth})} label="Показывать вход в личный кабинет TL"/>
-      </div>
-     </div>}
+     {sitesRow('main','sites')}
+     {!external&&<FbAuthRow admin={admin} onChange={fbAuth=>set({fbAuth})}/>}
     </div>
-    {chain&&!external&&(admin.extra
+    {admin.extra
      ?<div className="extra-account">
-       <div className="extra-account-head"><Text text="Дополнительный личный кабинет" typography="subtitle"/><IconButton icon="delete" hint="Удалить дополнительный личный кабинет" onClick={()=>{set({extra:false,extraUrl:''});setExtraError('')}}/></div>
-       <div className="setting-row align-top">
-        <Text text="Ссылка"/>
-        <div className="dependent-field admin-field">
-         <Field value={admin.extraUrl} onChange={extraUrl=>{set({extraUrl});setExtraError('')}} placeholder="https://" size="stretch" state={extraError?'danger':undefined}/>
-         {extraError?<div role="alert"><Text text={extraError} typography="caption" color="danger"/></div>:<Text text="Вставьте ссылку на личный кабинет" typography="caption" color="neutral"/>}
+       <div className="extra-account-head"><Text text="Дополнительный личный кабинет" typography="subtitle"/><Button icon="delete" hint="Удалить дополнительный личный кабинет" onClick={()=>{set({extra:false,extraUrl:'',extraSites:['']});setExtraError('');clearSiteErrors()}}/></div>
+       <div className="setting-row">
+        <Text text="Тип личного кабинета"/>
+        <div className="admin-field link-field"><ReadOnlyField text={extraExternal?'Внешний личный кабинет':'Личный кабинет TL'}/></div>
+       </div>
+       <div className="dependent-block">
+        {extraExternal&&<WarningAlert text={fbAuthHiddenAlert}/>}
+        <div className="setting-row align-top">
+         <Text text="Ссылка на личный кабинет"/>
+         <div className="dependent-field admin-field">
+          {extraExternal
+           ?<Field value={admin.extraUrl} onChange={extraUrl=>{set({extraUrl});setExtraError('')}} placeholder="https://" size="stretch" state={extraError?'danger':undefined}/>
+           :<Field value={accountUrl} onChange={()=>{}} size="stretch"/>}
+          {extraExternal
+           ?(extraError?<div role="alert"><Text text={extraError} typography="caption" color="danger"/></div>:<Text text="Вставьте ссылку на внешний кабинет" typography="caption" color="neutral"/>)
+           :<Text text="Формируется автоматически" typography="caption" color="neutral"/>}
+         </div>
         </div>
+        {sitesRow('extra','extraSites')}
+        {!extraExternal&&<FbAuthRow admin={admin} onChange={fbAuth=>set({fbAuth})}/>}
        </div>
       </div>
-     :<div><Button type="link" icon="add" text="Личный кабинет" onClick={()=>set({extra:true})}/></div>)}
+     :<div><Button type="link" icon="add" text="Личный кабинет" onClick={()=>{set({extra:true});clearSiteErrors()}}/></div>}
    </div>
   </Tile></div>
  </main>;
@@ -130,14 +199,13 @@ function AdminPage({admin,setAdmin,error,setError,extraError,setExtraError,chain
 
 function Prototype(){
  const [route,setRoute]=useState(routeFromHash);
- const [hotelType,setHotelType]=useState(()=>{try{return localStorage.getItem('lk-hotel-type')||'single'}catch{return 'single'}});
- useEffect(()=>{try{localStorage.setItem('lk-hotel-type',hotelType)}catch{}},[hotelType]);
  const [settings,setSettings]=useState(initialSettings);
  const [savedSettings,setSavedSettings]=useState(initialSettings);
  const [admin,setAdmin]=useState(initialAdmin);
  const [savedAdmin,setSavedAdmin]=useState(initialAdmin);
  const [adminError,setAdminError]=useState('');
  const [extraError,setExtraError]=useState('');
+ const [siteErrors,setSiteErrors]=useState({main:[],extra:[]});
  const [description,setDescription]=useState(null);
  const [toast,setToast]=useState(''),[toastStatus,setToastStatus]=useState('success');
  useEffect(()=>{const f=()=>setRoute(routeFromHash());window.addEventListener('hashchange',f);return()=>window.removeEventListener('hashchange',f)},[]);
@@ -147,9 +215,10 @@ function Prototype(){
  const save=()=>{
   if(route==='admin'){
    const mainError=admin.type==='external'&&!admin.externalUrl.trim()?'Укажите ссылку':'';
-   const extraMissing=hotelType==='chain'&&admin.type!=='external'&&admin.extra&&!admin.extraUrl.trim()?'Укажите ссылку':'';
-   setAdminError(mainError);setExtraError(extraMissing);
-   if(mainError||extraMissing){notify('Не удалось сохранить. Исправьте ошибки на странице','danger');return}
+   const extraMissing=otherType(admin.type)==='external'&&admin.extra&&!admin.extraUrl.trim()?'Укажите ссылку':'';
+   const sErrors=validateSites(admin);
+   setAdminError(mainError);setExtraError(extraMissing);setSiteErrors(sErrors);
+   if(mainError||extraMissing||[...sErrors.main,...sErrors.extra].some(Boolean)){notify('Не удалось сохранить. Исправьте ошибки на странице','danger');return}
   }
   if(route==='admin')setSavedAdmin(admin);else setSavedSettings(settings);
   notify('Изменения сохранены')};
@@ -161,14 +230,13 @@ function Prototype(){
      <Button type="primary" text="Сохранить" onClick={save}/>
      <div className="inline"><Icon name="wallet" color="accent"/><Icon name="settings" color="accent"/><Icon name="notification" color="accent"/><Icon name="help" color="accent"/><span className="inline user"><Icon name="account" color="accent"/><Text text="polina.kozlova" color="accent"/></span></div>
     </div>
-    {route==='admin'?<AdminPage chain={hotelType==='chain'} admin={admin} setAdmin={setAdmin} error={adminError} setError={setAdminError} extraError={extraError} setExtraError={setExtraError}/>:<AccountPage settings={settings} setSettings={setSettings} onDescription={setDescription} onNotify={notify} admin={savedAdmin} chain={hotelType==='chain'}/>}
+    {route==='admin'?<AdminPage admin={admin} setAdmin={setAdmin} error={adminError} setError={setAdminError} extraError={extraError} setExtraError={setExtraError} siteErrors={siteErrors} setSiteErrors={setSiteErrors}/>:<AccountPage settings={settings} setSettings={setSettings} onDescription={setDescription} onNotify={notify} admin={savedAdmin}/>}
     <footer className="footer"><Text typography="caption" color="neutral" text="© ООО «ТРЭВЕЛ ЛАЙН СИСТЕМС», 2021 – 2026"/><Text typography="caption" color="neutral" text="TravelLine: Platform — автоматизация процессов для гостиничного бизнеса"/></footer>
    </div>
   </div>
   <SidebarWindow header="Описание настройки" width={640} state={[Boolean(description),v=>{if(!v)setDescription(null)}]} footer={({close})=><Button text="Закрыть" onClick={close}/>}>
    <DescriptionBody id={description}/>
   </SidebarWindow>
-  <DevPanel hotelType={hotelType} setHotelType={setHotelType}/>
   <SnackbarWindow status={toastStatus} text={toast} state={[Boolean(toast),v=>{if(!v)setToast('')}]} close={()=>setToast('')}/>
  </>;
 }
