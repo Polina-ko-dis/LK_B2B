@@ -20,11 +20,9 @@ function DescriptionLink({onOpen}){return <Button type="link" icon="help" text="
 // Максимум один кабинет каждого типа: дополнительный ЛК всегда другого типа, чем основной.
 const otherType=type=>type==='external'?'tl':'external';
 const typeHint=type=>type==='external'?'Тип: внешний личный кабинет':'Тип: личный кабинет TL';
-// Вход в модуле бронирования управляется только для ЛК TL; если ЛК TL нет (только внешний) — вход всегда скрыт.
-const hasTl=admin=>admin.type==='tl'||admin.extra;
-const fbAuthOn=admin=>hasTl(admin)&&admin.fbAuth;
+const typeLabel=type=>type==='external'?'Внешний личный кабинет':'Личный кабинет TL';
+// Вход в модуле бронирования настраивается только в админке, в блоке ЛК TL; для внешнего ЛК он всегда скрыт. Отелю на странице гостя не показываем.
 const fbAuthLabel='Показывать вход в личный кабинет TL';
-const fbAuthHiddenText='Для внешнего личного кабинета вход всегда скрыт';
 
 function FbAuthRow({admin,onChange}){
  return <div className="setting-row align-top checkbox-row">
@@ -39,8 +37,8 @@ function accountLinks(admin){
  const extraType=otherType(admin.type);
  const extra=admin.extra?{type:extraType,url:extraType==='external'?admin.extraUrl.trim():accountUrl}:null;
  const hasExtra=Boolean(extra&&extra.url);
- const links=[{key:'main',label:hasExtra?'Основной личный кабинет':'Ссылка на личный кабинет гостя',url:main.url,hint:typeHint(main.type)}];
- if(hasExtra)links.push({key:'extra',label:'Дополнительный личный кабинет',url:extra.url,hint:typeHint(extra.type)});
+ const links=[{key:'main',label:hasExtra?typeLabel(main.type):'Ссылка на личный кабинет гостя',url:main.url,hint:hasExtra?'':typeHint(main.type)}];
+ if(hasExtra)links.push({key:'extra',label:typeLabel(extra.type),url:extra.url,hint:''});
  return links;
 }
 
@@ -68,7 +66,7 @@ function AccountPage({settings,setSettings,onDescription,onNotify,admin}){
      <div className={'account-link'+(many?' with-copy':'')}>
       <div className="dependent-field link-field">
        <ReadOnlyField text={l.url||'Ссылка не указана'}/>
-       <Text text={l.hint} typography="caption" color="neutral"/>
+       {l.hint&&<Text text={l.hint} typography="caption" color="neutral"/>}
       </div>
       {many&&<Button icon="copy" text="Скопировать" disabled={!l.url} onClick={()=>copy(l.url)}/>}
      </div>
@@ -85,13 +83,6 @@ function AccountPage({settings,setSettings,onDescription,onNotify,admin}){
       {r.description&&<DescriptionLink onOpen={()=>onDescription(r.description)}/>}
      </div>
     </div>)}
-    <div className="setting-row align-top checkbox-row">
-     <Text text="Вход в модуле бронирования TravelLine"/>
-     <div className="dependent-field">
-      <Checkbox value={fbAuthOn(admin)} disabled disabledHint={hasTl(admin)?'Настраивается администратором':fbAuthHiddenText} label={{text:fbAuthLabel,color:'foreground'}}/>
-      {!hasTl(admin)&&<Text text={fbAuthHiddenText} typography="caption" color="neutral"/>}
-     </div>
-    </div>
    </div>
   </Tile></div>
  </main>;
